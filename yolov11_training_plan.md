@@ -2,7 +2,7 @@
 
 ## 1. Goal
 
-Fine-tune the YOLOv11n model for vehicle damage detection using the car damage dataset located in the `data/` folder. Aim for high mAP@0.5 and acceptable FPS, as indicated in `yolo_v11_documentation.md`. Use the 8 classes defined in `data/data.yaml`.
+Fine-tune the YOLOv11s model for vehicle damage detection using the car damage dataset located in the `data/` folder. Aim for high mAP@0.5 and acceptable FPS, as indicated in `yolo_v11_documentation.md`. Use the 8 classes defined in `data/data.yaml`.
 
 ## 2. Dataset Preparation
 
@@ -25,11 +25,11 @@ Fine-tune the YOLOv11n model for vehicle damage detection using the car damage d
 
 ## 4. Model Selection and Configuration
 
-- **Base Model:** Use `yolov11n.pt` as the pre-trained base model.
+- **Base Model:** Use `yolov11s.pt` as the pre-trained base model.
 - **Configuration File:** Use `data/data.yaml` for data configuration.
 - **Training Command:** Use the recommended training command from `yolo_v11_documentation.md`, with adjustments as needed:
   ```bash
-  yolo train model=yolov11n.pt \
+  yolo train model=yolov11s.pt \
   data=data/data.yaml \
   epochs=100 \
   imgsz=1280 \
