@@ -5,7 +5,7 @@ model = YOLO('runs/car_damage/continued_aug_training/weights/best.pt')
 
 # Alternative second-stage approach without using ema
 results_stage2 = model.train(
-    data='data/data.yaml',
+    data='/content/drive/MyDrive/CarDataset',
     epochs=75,
     imgsz=640,  # Stay at 640px since higher resolution didn't help
     batch=6,    # Middle ground batch size
