@@ -5,7 +5,7 @@ from PIL import Image
 import time
 
 # Set your paths here
-YOLO_MODEL_PATH = "final.pt"  # Replace with your model path
+YOLO_MODEL_PATH = "runs/car_damage/main/weights/best.pt"  # Replace with your model path
 INPUT_IMAGE_PATH = "image.png"  # Replace with your image path
 OUTPUT_IMAGE_PATH = "output.jpg"  # Where to save the result
 CONFIDENCE_THRESHOLD = 0.25  # Minimum detection confidence

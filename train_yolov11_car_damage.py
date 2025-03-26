@@ -3,8 +3,6 @@ import os
 import torch
 import argparse
 from pathlib import Path
-import psutil  # For CPU core detection
-import re
 
 # =====================================
 # CONFIGURATION - EDIT THESE VARIABLES
@@ -21,58 +19,13 @@ EPOCHS = 100                    # Number of training epochs
 BATCH_SIZE = 6                  # Batch size for training
 IMG_SIZE = 640                  # Image size for training
 DEVICE = '0'                    # Device to use (cpu or GPU number)
-# Calculate optimal number of workers (typically 4-8 per CPU core)
-CPU_COUNT = os.cpu_count() or psutil.cpu_count(logical=True) or 8
-WORKERS = min(CPU_COUNT, 16)    # Use at most 16 workers to avoid diminishing returns
+WORKERS = 8                     # Number of workers for dataloader
 RESUME = False                  # Whether to resume training from last checkpoint
-PIN_MEMORY = True               # Pin CPU memory for faster data transfer to GPU
 
 # Output configuration
 PROJECT = 'runs/car_damage'     # Project directory
-NAME_BASE = 'train'             # Base experiment name (will be auto-incremented)
+NAME = 'main'                  # Experiment name
 # =====================================
-
-def get_next_run_name(project_dir, base_name):
-    """
-    Automatically increments the run name to avoid overwriting previous runs.
-    For example, if 'train' exists, it will use 'train2'. If 'train2' exists, it will use 'train3', etc.
-    
-    Args:
-        project_dir: Project directory
-        base_name: Base name for the run
-        
-    Returns:
-        Incremented run name
-    """
-    # Make sure the project directory exists
-    os.makedirs(project_dir, exist_ok=True)
-    
-    # Get all directories in the project directory
-    existing_runs = [d for d in os.listdir(project_dir) if os.path.isdir(os.path.join(project_dir, d))]
-    
-    # If no existing run with base_name, return base_name
-    if base_name not in existing_runs:
-        return base_name
-    
-    # Find all runs with the pattern base_name + number
-    pattern = re.compile(f"^{re.escape(base_name)}(\\d*)$")
-    numbered_runs = [run for run in existing_runs if pattern.match(run)]
-    
-    if not numbered_runs:
-        return f"{base_name}2"  # Start with 2 if only the base name exists
-    
-    # Extract numbers and find the highest
-    max_number = 1  # Default to 1, will become 2 after increment
-    for run in numbered_runs:
-        match = pattern.match(run)
-        if match and match.group(1):  # If there's a number suffix
-            try:
-                number = int(match.group(1))
-                max_number = max(max_number, number)
-            except ValueError:
-                continue
-    
-    return f"{base_name}{max_number + 1}"
 
 def parse_args():
     """Parse command-line arguments (only used if you want to override the variables above)"""
@@ -85,27 +38,13 @@ def parse_args():
     parser.add_argument('--device', type=str, default=DEVICE, help='Device to use for training (cpu or GPU number)')
     parser.add_argument('--workers', type=int, default=WORKERS, help='Number of workers for dataloader')
     parser.add_argument('--project', type=str, default=PROJECT, help='Project name')
-    parser.add_argument('--name', type=str, default=None, help='Experiment name (will be auto-incremented if not specified)')
+    parser.add_argument('--name', type=str, default=NAME, help='Experiment name')
     parser.add_argument('--resume', action='store_true', default=RESUME, help='Resume training from last checkpoint')
     parser.add_argument('--pretrained', type=str, default=PRETRAINED, help='Path to pretrained model')
-    parser.add_argument('--pin-memory', action='store_true', default=PIN_MEMORY, help='Pin memory for faster data transfer')
-    parser.add_argument('--force-overwrite', action='store_true', help='Force overwrite existing run with same name')
     return parser.parse_args()
 
 def main():
     args = parse_args()
-    
-    # Auto-increment run name if not explicitly provided via command line
-    if args.name is None:
-        args.name = get_next_run_name(args.project, NAME_BASE)
-    elif not args.force_overwrite:
-        # If name is explicitly provided but we don't want to overwrite
-        args.name = get_next_run_name(args.project, args.name)
-    
-    print(f"Using run name: {args.name}")
-    
-    # Print system information
-    print(f"CPU cores: {CPU_COUNT}, using {args.workers} workers for data loading")
     
     # Print GPU memory info if available
     if torch.cuda.is_available():
@@ -116,10 +55,6 @@ def main():
             print(f"Memory allocated: {torch.cuda.memory_allocated(i) / 1e9:.2f} GB")
             print(f"Memory reserved: {torch.cuda.memory_reserved(i) / 1e9:.2f} GB")
             print(f"Memory reserved (cached): {torch.cuda.memory_reserved(i) / 1e9:.2f} GB")
-            
-            # Get GPU total memory for info
-            gpu_properties = torch.cuda.get_device_properties(i)
-            print(f"Total GPU memory: {gpu_properties.total_memory / 1e9:.2f} GB")
     else:
         print("CUDA is not available. Using CPU for training (not recommended).")
     
@@ -131,17 +66,11 @@ def main():
     print(f"Loading {'pretrained ' + args.pretrained if args.pretrained else 'base ' + args.model} model...")
     model = YOLO('yolo11s.pt')
 
-    # Optimization info
-    print("\nTraining with CPU+GPU optimization:")
-    print(f"- Using {args.workers} CPU workers for data loading")
-    print(f"- Batch size: {args.batch_size}")
-    print(f"- Image size: {args.img_size}")
-    print(f"- Mixed precision: enabled")
-    print(f"- Half precision: enabled")
-    print(f"- Pin memory: {args.pin_memory}")
-    print(f"- Cache: ram")
-    print(f"- Output directory: {os.path.join(args.project, args.name)}")
-
+    # Training parameters optimized for 6GB VRAM
+    # - Reduced batch size for 6GB VRAM
+    # - Moderate image size (640px)
+    # - Mixed precision training enabled
+    
     # Start training
     results = model.train(
         data=args.data,
@@ -199,8 +128,6 @@ def main():
         plots=True,
         half=True,  # Use half precision (FP16) for memory savings
         patience=30,  # Early stopping patience
-        # CPU+GPU optimization
-        pin_memory=args.pin_memory,  # Pin memory for faster CPU->GPU transfer
     )
     
     # Print training results

@@ -2,4 +2,4 @@ datasets/
 .venv/
 data/
 runs/
-*.pt
+yolo11s.pt
